@@ -1,6 +1,9 @@
 
 import serial
 
+from bl_ascii_dump import bl_ascii_dumper
+
+
 class bl_host():
 
     def __init__(self, ser):
@@ -50,7 +53,7 @@ class bl_host():
         return self._get_ack_resp()
 
 
-    def bl_read_memory(self, address, sz):
+    def bl_read_memory(self, address, sz, dumper=None):
         assert sz >= 1, "bl_read_memory can only read up to 256 bytes at a time"
         assert sz <= 256, "bl_read_memory can only read up to 256 bytes at a time"
         
@@ -75,22 +78,17 @@ class bl_host():
         self._valid = self._send_acknowledged_cmd(sz-1)
         if not self._valid:
             return None
-        
-        _line = "%04x " % address
-        _asc = ""
+
+        if dumper is None:
+            dumper = bl_ascii_dumper(address)
+
         for _i in range(sz):
             _b = self._ser.read(1)
             if len(_b) < 1:
                 print("ERROR: bl_read_memory error")
                 self._valid = False
                 return None
-            _line = "%s%02x" % (_line, _b[0]) if _i % 2 == 0 else "%s%02x " % (_line, _b[0])
-            _char = chr(_b[0])
-            _asc = "%s%c" % (_asc, _char if _char.isprintable() else '.')
-            if (_i+1) % 16 == 0:
-                print("INFO: %s %s" % (_line, _asc))
-                _line = "%04x " % (address + (_i + 1))
-                _asc = ""
+            dumper.dump(_b[0])
             
         return _b
 
